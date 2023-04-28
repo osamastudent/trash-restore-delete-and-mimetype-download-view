@@ -1,0 +1,296 @@
+*********************************************Model **********************************************************************
+use Illuminate\Database\Eloquent\SoftDeletes;
+use SoftDeletes;
+
+*********************************************controller**********************************************************************
+    public function destroy(Request $req)
+    {
+        $ids = $req->ids;
+        $action = $req->action;
+    
+        if ($action == 'delete') {
+            homecontent::whereIn('id', $ids)->forceDelete();
+        }
+         elseif ($action == 'restore') {
+            homecontent::whereIn('id', $ids)->restore();
+        }
+    
+        return redirect()->back();
+    }
+    
+
+
+
+
+    
+public function showdownload(){
+    $showall=homecontent::all();
+return view('showdownload' ,compact('showall'));
+}
+
+public function downloadfile(Request $req,$id){
+    return response()->download(public_path('homesite/image/'.$id));
+}
+
+
+public function selectedtrash(Request $req){
+    $ids=$req->ids;
+    $action=$req->action;
+
+    if($action=='permenentdelete'){
+       homecontent::whereIn('id', $ids)->forcedelete();
+    }
+    elseif($action=='selectedtrash'){
+homecontent::whereIn('id',$ids)->delete();
+    }
+    return redirect()->back();
+}
+
+public function delete($id){
+$delete=homecontent::find($id);
+if($delete!=""){
+$delete->delete($delete);
+}
+return redirect()->back();
+}
+public function restore($id){
+    $restore=homecontent::withTrashed()->find($id);
+    $restore->restore($restore);
+    return redirect()->back();
+    }
+
+    public function forcedelete($id){
+    $forcedelete=homecontent::withTrashed()->find($id);
+    $forcedelete->forcedelete($forcedelete);
+    return redirect()->back();
+    }
+
+
+
+    
+public function deletecheckbox(Request $req){
+$ids=$req->ids;
+if($ids!==null){
+homecontent::whereIn('id',$ids)->forcedelete();
+}
+return redirect()->back();
+}
+
+public function deleteall(){
+$trashedall=homecontent::onlyTrashed()->get();
+foreach($trashedall as $deleteall){
+$deleteall->forceDelete();
+
+}
+return redirect()->back();
+}
+
+
+public function restorecheckbox(Request $req){
+    $ids=$req->ids;
+    homecontent::whereIn('id',$ids)->restore();
+    return redirect()->back();
+    }
+
+
+public function trashall(){
+homecontent::query()->delete();
+return redirect()->back();
+}
+
+public function restoreall(){
+    homecontent::query()->withTrashed()->restore();
+    return redirect()->back();
+    }
+
+
+public function deletedirect($id){
+    $deletedirect=homecontent::find($id);
+    $deletedirect->forcedelete($deletedirect);
+    return redirect()->back();
+}
+
+
+
+public function viewfile($id){
+$viewfile=homecontent::find($id);
+return view('showviewfile
+',compact('viewfile'));
+}
+
+
+public function trashdata(){
+$trashed=homecontent::onlyTrashed()->get();
+return view('trashview',compact('trashed'));
+}
+
+*********************************************web.php**********************************************************************
+route::get('/showdownload',[adminController::class,'showdownload']);
+route::get('/downloadfile/{id}',[adminController::class,'downloadfile']);
+route::get('/viewfile/{id}',[adminController::class,'viewfile']);
+route::get('/trashdata',[adminController::class,'trashdata']);
+route::get('/delete/{id}',[adminController::class,'delete']);
+route::get('/restore/{id}',[adminController::class,'restore']);
+route::get('/forcedelete/{id}',[adminController::class,'forcedelete']);
+
+route::post('/deletecheckbox',[adminController::class,'deletecheckbox']);
+route::get('/deleteall',[adminController::class,'deleteall']);
+route::get('/trashall',[adminController::class,'trashall']);
+route::get('/restoreall',[adminController::class,'restoreall']);
+route::post('/restorecheckbox',[adminController::class,'restorecheckbox']);
+
+route::post('/users/destroy',[adminController::class,'destroy']);
+
+route::post('/selectedtrash',[adminController::class,'selectedtrash']);
+route::get('/deletedirect/{id}',[adminController::class,'deletedirect']);
+
+*********************************************trashed data file**********************************************************************
+
+    <h1><a href="/showdownload">go back</a></h1>
+    
+    <form action="/users/destroy" method="post">
+    @csrf
+<table class="table">
+    @if(count($trashed)>0)
+@foreach($trashed as $values)
+<tr>
+<td>{{$values->title}}</td>
+
+<td><a href="{{url('restore',$values->id)}}">restore</a></td>
+<td><a href="{{url('forcedelete',$values->id)}}">permenant delete</a></td>
+<td><input type="checkbox" name="ids[{{$values->id}}]" value="{{$values->id}}"></td>
+</tr>
+@endforeach
+@else
+
+<tr>
+<td><b>no data found</b></td>
+</tr>
+@endif
+</table>
+
+<!-- <input type="submit" name=""  value="delete selected users"> -->
+
+
+<button type="submit" name="action" value="delete">delete selected users</button>
+    <button type="submit" name="action" value="restore">restore selected users</button>
+</form>
+
+
+
+<p><a href="/deleteall">delete all</a></p>
+<p><a href="/restoreall">restore all</a></p>
+
+*********************************************view file**********************************************************************
+
+<h1><a href="/trashdata">show trashed</a></h1>
+<table class="table">
+<form action="/selectedtrash" method="post">
+    @csrf
+    @if(count($showall)>0)
+@foreach($showall as $values)
+<tr>
+<td><input type="checkbox" name="ids[]" value="{{$values->id}}"></td>
+<td>{{$values->image}}</td>
+<td><a href="{{url('downloadfile',$values->image)}}">download</a></td>
+<td><a href="{{url('viewfile',$values->id)}}">view</a></td>
+<td><a href="{{url('delete',$values->id)}}">Move  to Trash</a></td>
+<td><a href="{{url('deletedirect',$values->id)}}">delete permenent</a></td>
+</tr>
+@endforeach
+@else
+
+<tr>
+<td><b>no data found</b></td>
+</tr>
+@endif
+<b>select all <input type="checkbox" id="checkAll"></b>
+
+<button type="submit" name="action" value="permenentdelete">selected permenent delete </button>
+<button type="submit" name="action" value="selectedtrash" >selected trash</button>
+
+</form>
+</table>
+<b><a href="trashall">move to trash all</a></b>
+
+
+</body>
+</html>
+
+<script>
+    const checkAll = document.getElementById('checkAll');
+const checkboxes = document.querySelectorAll('input[type="checkbox"][name="ids[]"]');
+
+checkAll.addEventListener('change', () => {
+    checkboxes.forEach((checkbox) => {
+        checkbox.checked = checkAll.checked;
+    });
+});
+</script>
+
+
+
+
+
+
+********************************MimeType and getSize**************************************
+
+
+$filesize=$file->getClientMimeType();
+$filesize=$file->getMimeType();
+$filesize=$file->getSize();
+
+
+public function uploadfile(Request $req){
+    $show=uploadfile::all();
+    $req->validate([
+'mypdf'=>'required'
+]);
+
+foreach($req->mypdf as $file){
+if($req->hasfile('mypdf'))
+{
+
+    $extension=$file->getClientOriginalName();
+    $filename=time().' '.$extension;
+    $filesize=$file->getSize();
+$file->move('uploadpdf',$filename); 
+$obj=new uploadfile();
+$obj->pdf=$filename;
+
+$obj->video=$filesize;
+$obj->save();
+}
+}
+$key=1;
+
+return view('about.accountdetails' ,compact('show','key'));
+
+
+}
+
+
+
+
+use Illuminate\Support\Facades\Stroage;
+
+public function view($id){
+$find=uploadfile::find($id);
+return view('about.showfil' ,compact('find'));
+}
+
+public function download(Request $req ,$kuchb){
+return response()->download(public_path('uploadpdf/'.$kuchb));
+}
+
+---------web.php-------------
+route::get('/view/{id}',[adminController::class,'view']);
+route::get('/download/{kuchb}',[adminController::class,'download']);
+
+-------------view butoon ------------
+
+<td><a href="{{url('/view',$values->id)}}">view</a></td>
+<td><a href="{{url('/download',$values->pdf)}}">download</a></td>
+-------------------fetch product on new file -------
+{{$find->video}}
+<iframe src="{{asset('/uploadpdf/'.$find->pdf)}}" frameborder="0" height="500" width="800"></iframe>
